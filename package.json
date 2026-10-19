@@ -1,14 +1,30 @@
 {
   "name": "salescout-intern-task",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "engines": { "node": ">=20" },
   "scripts": {
+    "dev:server": "tsx watch server/index.ts",
+    "dev:client": "vite --config client/vite.config.ts --host 0.0.0.0",
+    "build": "tsc --noEmit && vite build --config client/vite.config.ts",
     "typecheck": "tsc --noEmit",
-    "test": "echo \"Добавьте свои тесты\" && exit 1"
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "typescript": "^5.6.0"
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "vite": "^6.0.7",
+    "vitest": "^2.1.8"
   }
 }

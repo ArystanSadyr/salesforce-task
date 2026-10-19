@@ -6,8 +6,10 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
     "noEmit": true,
-    "allowImportingTsExtensions": true
+    "jsx": "react-jsx",
+    "types": ["node", "vitest/globals"]
   },
-  "include": ["src"]
+  "include": ["src", "server", "client/src", "client/vite.config.ts", "tests"]
 }
