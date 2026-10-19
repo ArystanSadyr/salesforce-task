@@ -1,105 +1,68 @@
-# SaleScout — тестовое задание для стажёра (web-разработчик)
+# SaleScout
 
-SaleScout — SaaS-сервис, который автоматически управляет ценами продавцов на Kaspi.kz:
-бот следит за ценами конкурентов и выставляет цену так, чтобы продавец был на первом месте, не уходя в минус.
+A small repricing demo: an Express API calculates a recommended price for each product, and a React + Vite page displays the old and new prices with the reason.
 
-Ваша задача — написать **мини-версию такого прайс-бота**.
+## Requirements
 
-- ⏱ Ожидаемое время работы: **3–4 часа**.
-- 📅 Срок сдачи: **3 календарных дня** с момента получения задания.
+- Node.js 20 or newer
+- npm
 
-## Что нужно сделать
+## Run locally
 
-1. **Функция расчёта цены** — `calculatePrice(product)` в файле `src/pricing.ts` (чистая функция, без I/O).
-2. **HTTP API** — эндпоинт `POST /reprice` на **Express или Fastify**: принимает массив товаров, возвращает массив результатов.
-3. **Веб-страница** — простая страница на **React (Vite)**: таблица «было / стало» (SKU, название, старая цена, новая цена, причина), данные получаются запросом к `POST /reprice`.
-4. **Свои тесты** на `calculatePrice` (рекомендуем vitest, можно jest).
-5. **README** с инструкцией по запуску (замените этот файл или добавьте раздел в начало).
-
-## Входные данные
-
-Пример — `data/products.json`, ожидаемый результат для него — `data/expected.json`. Типы — в `src/types.ts`.
-
-```ts
-interface Competitor { seller: string; price: number; inStock: boolean }
-
-interface Product {
-  sku: string;
-  name: string;
-  myPrice: number;   // текущая цена продавца
-  minPrice: number;  // ниже этой цены опускаться нельзя (целое число)
-  maxPrice: number;  // выше этой цены подниматься нельзя (целое число)
-  step: number;      // на сколько тенге становиться дешевле конкурента (>= 0, может быть дробным)
-  competitors: Competitor[];
-}
-
-type Reason = "UNDERCUT" | "AT_MIN" | "AT_MAX" | "NO_COMPETITORS";
-
-interface PriceResult {
-  sku: string;
-  oldPrice: number;  // = product.myPrice без изменений
-  newPrice: number;  // целое число тенге
-  reason: Reason;
-}
-
-export function calculatePrice(product: Product): PriceResult;
+```sh
+npm install
 ```
 
-**Сигнатуру, имя и путь файла (`src/pricing.ts` в корне репозитория, именованный экспорт `calculatePrice`) менять нельзя** — решение проверяется автотестами. Можно вынести типы, React-приложение и сервер в другие папки, но `src/pricing.ts` должен остаться в корне и экспортировать `calculatePrice`.
+Start the API and web app in separate terminals:
 
-## Правила расчёта цены
+```sh
+npm run dev:server
+```
 
-Гарантируется: `minPrice <= maxPrice`, все числа конечные и неотрицательные. Валидировать входные данные в `calculatePrice` не нужно (в эндпоинте — по желанию, это плюс).
+```sh
+npm run dev:client
+```
 
-1. Учитываются **только конкуренты с `inStock: true`**. Остальные игнорируются полностью.
-2. Если таких конкурентов нет (или список пуст) → `newPrice = maxPrice`, `reason = "NO_COMPETITORS"`.
-3. Иначе берём минимальную цену среди них: `best`. Если несколько конкурентов с одинаковой минимальной ценой — это просто `best`.
-4. Кандидат: `candidate = floor(best - step)` — округление **вниз** до целого тенге.
-5. Ограничение диапазоном:
-   - `candidate < minPrice` → `newPrice = minPrice`, `reason = "AT_MIN"`;
-   - `candidate > maxPrice` → `newPrice = maxPrice`, `reason = "AT_MAX"`;
-   - иначе (`minPrice <= candidate <= maxPrice`, границы включительно) → `newPrice = candidate`, `reason = "UNDERCUT"`.
-
-`myPrice` на расчёт **не влияет** — он только возвращается как `oldPrice`.
-
-Примеры:
-
-| best | step | min | max | newPrice | reason |
-|---|---|---|---|---|---|
-| 384990 | 10 | 370000 | 420000 | 384980 | UNDERCUT |
-| 175000 | 100 | 180000 | 210000 | 180000 | AT_MIN |
-| 150000 | 1 | 100000 | 125000 | 125000 | AT_MAX |
-| 349999.9 | 0.5 | 330000 | 380000 | 349999 | UNDERCUT |
-| — (нет в наличии) | 50 | 80000 | 99990 | 99990 | NO_COMPETITORS |
+Open <http://localhost:5173>. The page loads `data/products.json` and posts the array to `POST /reprice`. Vite proxies that request to the API at `http://localhost:3001`. Set `PORT` to change the API port (and update the Vite proxy if using a different port).
 
 ## API
 
-`POST /reprice`, `Content-Type: application/json`, тело — `Product[]`. Ответ `200` — `PriceResult[]` в том же порядке. На некорректное тело (не массив) — ответ `400`.
+`POST http://localhost:3001/reprice` accepts a JSON array of products and returns a `PriceResult[]` in the same order. A non-array body or product with invalid fields receives HTTP 400. Example:
 
-## Технические требования
+```sh
+curl -X POST http://localhost:3001/reprice \
+  -H 'Content-Type: application/json' \
+  --data-binary @data/products.json
+```
 
-- Node.js 20, **TypeScript**, npm.
-- Express или Fastify для сервера; React + Vite для фронтенда.
-- Свои тесты, запускаемые через `npm test`.
-- README с командами установки и запуска (`npm install`, как поднять сервер и фронт).
-- **Осмысленная история коммитов** (не один коммит «done»).
-- Стартовый код в этом репозитории — минимальный, менять структуру (кроме `src/pricing.ts`) можно.
+## Price calculation
 
-## Про AI-инструменты
+`src/pricing.ts` exports the pure `calculatePrice(product)` function. It ignores out-of-stock offers, takes the cheapest remaining competitor, subtracts `step`, floors to a whole tenge, then clamps to the seller's `[minPrice, maxPrice]` range. If there is no in-stock competitor, it selects `maxPrice`. `myPrice` is returned as `oldPrice` and does not affect the calculation.
 
-ChatGPT, Copilot, Cursor и т.п. **разрешены**. Но на интервью вы должны уметь объяснить любую строку своего кода и внести небольшое изменение вживую.
+## Checks and build
 
-## Как сдать
+```sh
+npm test
+npm run typecheck
+npm run build
+```
 
-1. Создайте **свой публичный** репозиторий на GitHub (можно через «Use this template» или просто скопировать файлы).
-2. Выполните задание, закоммитьте и запушьте.
-3. Пришлите ссылку на репозиторий в **сопроводительном письме к отклику на hh.kz**.
+## Project structure
 
-## Как оцениваем
+- `src/pricing.ts`, `src/types.ts` — pricing rule and shared types
+- `server/index.ts` — Express API and request shape checks
+- `client/` — React/Vite dashboard
+- `tests/pricing.test.ts` — pricing edge cases
+- `data/` — example request and expected response
 
-- Корректность `calculatePrice` (скрытые автотесты по правилам выше) — основная часть оценки.
-- Наличие и качество своих тестов.
-- Работающие эндпоинт и страница, TypeScript без `any` где можно обойтись.
-- README, история коммитов, читаемость кода.
+## Defence notes
 
-Вопросы по заданию — пишите в ответ на hh.kz. Удачи!
+Be ready to explain these decisions:
+
+1. **Why is the pricing function pure?** It only uses its argument and returns a result, so it is deterministic, easy to test, and reusable from both API code and other callers.
+2. **Why `Math.min` then `Math.floor`?** Only in-stock offers compete. `Math.floor(best - step)` follows the stated rule, including fractional prices; rounding to nearest could leave the result above the intended candidate.
+3. **Why clamp after calculating the candidate?** The min/max constraints are seller limits. The reason identifies which branch won: no offers, lower limit, upper limit, or an unconstrained undercut.
+4. **Why does `myPrice` not affect the recommendation?** The specification says it is returned only as `oldPrice`; the algorithm responds to competitor prices and seller limits.
+5. **What does the API validate?** It validates the request is an array with correctly typed finite numeric fields and competitor entries before calling the domain function. Business inputs are kept out of the pure calculation.
+
+Possible follow-up change: to avoid matching a competitor's price when `step` is zero, require a minimum one-tenge undercut or make `step` at least one. That would change the task's specified behavior and should only be done if product requirements change.
